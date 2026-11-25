@@ -1,0 +1,36 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: aisx_security
+      POSTGRES_USER: aisx
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set_POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aisx -d aisx_security"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    security_opt: ["no-new-privileges:true"]
+  web:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?set_DATABASE_URL}
+      SESSION_SECRET: ${SESSION_SECRET:?set_SESSION_SECRET}
+      BOOTSTRAP_ADMIN: ${BOOTSTRAP_ADMIN:?set_BOOTSTRAP_ADMIN}
+      BOOTSTRAP_PASSWORD: ${BOOTSTRAP_PASSWORD:?set_BOOTSTRAP_PASSWORD}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+    ports:
+      - "127.0.0.1:8080:8080"
+    read_only: true
+    tmpfs: ["/tmp"]
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+volumes:
+  pgdata:
